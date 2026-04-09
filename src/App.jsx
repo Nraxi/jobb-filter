@@ -46,6 +46,7 @@ const App = () => {
 
     try {
       let allHits = [];
+      // Vi hämtar 5 sidor (500 jobb) för att ha ett bra underlag för datumsökning
       for (let i = 0; i < 5; i++) {
         const offset = i * 100;
         const url = `https://jobsearch.api.jobtechdev.se/search?q=${encodeURIComponent(role)}&offset=${offset}&limit=100`;
@@ -75,11 +76,15 @@ const App = () => {
           extent === "all" ||
           (job.employment_type?.label?.toLowerCase() || "").includes(extent);
 
+        // DATUM-FILTER LOGIK
         const pubDate = new Date(job.publication_date);
         const diffInHours = (new Date() - pubDate) / (1000 * 60 * 60);
         let matchesDate = true;
         if (publishedDate === "24h") matchesDate = diffInHours <= 24;
         else if (publishedDate === "3d") matchesDate = diffInHours <= 72;
+        else if (publishedDate === "7d") matchesDate = diffInHours <= 168;
+        else if (publishedDate === "14d") matchesDate = diffInHours <= 336;
+        else if (publishedDate === "30d") matchesDate = diffInHours <= 720;
 
         const remoteKeywords = ["distans", "remote", "hemifrån"];
         const matchesRemote =
@@ -149,7 +154,7 @@ const App = () => {
               <label className="label">Stad</label>
               <input
                 className="input-field"
-                placeholder="Stockholm..."
+                placeholder="Göteborg..."
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               />
@@ -177,8 +182,11 @@ const App = () => {
                 onChange={(e) => setPublishedDate(e.target.value)}
               >
                 <option value="all">När som helst</option>
-                <option value="24h">Senaste 24h</option>
+                <option value="24h">Senaste 24 timmarna</option>
                 <option value="3d">Senaste 3 dagarna</option>
+                <option value="7d">Senaste 7 dagarna</option>
+                <option value="14d">Senaste 14 dagarna</option>
+                <option value="30d">Senaste månaden</option>
               </select>
             </div>
             <label className="checkbox-label">
