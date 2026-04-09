@@ -188,18 +188,32 @@ const App = () => {
           <div className="input-row">
             <div className="input-group flex-2">
               <label className="label">Yrke / Roll</label>
-              <input className="input-field" placeholder="t.ex. Projektledare" value={role} onChange={(e) => setRole(e.target.value)} />
+              <input
+                className="input-field"
+                placeholder="t.ex. Projektledare"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+              />
             </div>
             <div className="input-group flex-1">
               <label className="label">Stad</label>
-              <input className="input-field" placeholder="Stockholm..." value={location} onChange={(e) => setLocation(e.target.value)} />
+              <input
+                className="input-field"
+                placeholder="Stockholm..."
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+              />
             </div>
           </div>
 
           <div className="filter-group-wrapper">
             <div className="input-group">
               <label className="label">Omfattning</label>
-              <select className="select-input" value={extent} onChange={(e) => setExtent(e.target.value)}>
+              <select
+                className="select-input"
+                value={extent}
+                onChange={(e) => setExtent(e.target.value)}
+              >
                 <option value="all">Alla typer</option>
                 <option value="heltid">Heltid</option>
                 <option value="deltid">Deltid</option>
@@ -207,7 +221,11 @@ const App = () => {
             </div>
             <div className="input-group">
               <label className="label">Publicerad</label>
-              <select className="select-input" value={publishedDate} onChange={(e) => setPublishedDate(e.target.value)}>
+              <select
+                className="select-input"
+                value={publishedDate}
+                onChange={(e) => setPublishedDate(e.target.value)}
+              >
                 <option value="all">När som helst</option>
                 <option value="24h">Senaste 24h</option>
                 <option value="3d">3 dagar</option>
@@ -216,7 +234,11 @@ const App = () => {
               </select>
             </div>
             <label className="checkbox-label">
-              <input type="checkbox" checked={remoteOnly} onChange={(e) => setRemoteOnly(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={remoteOnly}
+                onChange={(e) => setRemoteOnly(e.target.checked)}
+              />
               🏠 Distans
             </label>
           </div>
@@ -225,9 +247,23 @@ const App = () => {
             <label className="label">Ska innehålla</label>
             <div className="tag-box" style={{ borderColor: "#10b981" }}>
               {includeTags.map((tag) => (
-                <span key={tag} className="tag-green">{tag} <span onClick={() => removeTag(tag, "include")} className="tag-x">×</span></span>
+                <span key={tag} className="tag-green">
+                  {tag}{" "}
+                  <span
+                    onClick={() => removeTag(tag, "include")}
+                    className="tag-x"
+                  >
+                    ×
+                  </span>
+                </span>
               ))}
-              <input className="ghost-input" placeholder="React, Excel..." value={includeInput} onChange={(e) => setIncludeInput(e.target.value)} onKeyDown={(e) => handleKeyDown(e, "include")} />
+              <input
+                className="ghost-input"
+                placeholder="t.ex. React, Excel... (tryck Enter eller , för att lägga till sökordet)"
+                value={includeInput}
+                onChange={(e) => setIncludeInput(e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, "include")}
+              />
             </div>
           </div>
 
@@ -235,9 +271,23 @@ const App = () => {
             <label className="label">Ska INTE innehålla</label>
             <div className="tag-box" style={{ borderColor: "#ef4444" }}>
               {excludeTags.map((tag) => (
-                <span key={tag} className="tag-red">{tag} <span onClick={() => removeTag(tag, "exclude")} className="tag-x">×</span></span>
+                <span key={tag} className="tag-red">
+                  {tag}{" "}
+                  <span
+                    onClick={() => removeTag(tag, "exclude")}
+                    className="tag-x"
+                  >
+                    ×
+                  </span>
+                </span>
               ))}
-              <input className="ghost-input" placeholder="Senior, bemanning..." value={excludeInput} onChange={(e) => setExcludeInput(e.target.value)} onKeyDown={(e) => handleKeyDown(e, "exclude")} />
+              <input
+                className="ghost-input"
+                placeholder="t.ex. Senior, bemanning... (tryck Enter eller , för att lägga till sökordet)"
+                value={excludeInput}
+                onChange={(e) => setExcludeInput(e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, "exclude")}
+              />
             </div>
           </div>
 
@@ -251,33 +301,62 @@ const App = () => {
         {jobs.length > 0 && (
           <>
             <div className="live-filter-container">
-              <input className="input-field" placeholder="🔍 Live-filtrera i resultatet (sök i texten)..." value={textFilter} onChange={(e) => setTextFilter(e.target.value)} />
+              <input
+                className="input-field"
+                placeholder="🔍 Live-filtrera i resultatet (sök i texten)..."
+                value={textFilter}
+                onChange={(e) => setTextFilter(e.target.value)}
+              />
             </div>
 
             <div className="results-header-row">
               <div className="col-annons">
                 <div className="header-main-label">Annons / Företag</div>
                 <div className="header-sub-sort">
-                  <span onClick={() => requestSort("headline")} className={sortConfig.key === "headline" ? "active" : ""}>
+                  <span
+                    onClick={() => requestSort("headline")}
+                    className={sortConfig.key === "headline" ? "active" : ""}
+                  >
                     A-Z Annons {getSortIcon("headline")}
                   </span>
-                  <span onClick={() => requestSort("employer")} className={sortConfig.key === "employer" ? "active" : ""}>
+                  <span
+                    onClick={() => requestSort("employer")}
+                    className={sortConfig.key === "employer" ? "active" : ""}
+                  >
                     A-Z Företag {getSortIcon("employer")}
                   </span>
                 </div>
               </div>
-              <div className="col-publicerad clickable" onClick={() => requestSort("date")}>
+              <div
+                className="col-publicerad clickable"
+                onClick={() => requestSort("date")}
+              >
                 Publicerad {getSortIcon("date")}
               </div>
             </div>
           </>
         )}
 
-        {error && <div style={{textAlign: 'center', color: '#ef4444', fontWeight: 'bold'}}>{error}</div>}
+        {error && (
+          <div
+            style={{
+              textAlign: "center",
+              color: "#ef4444",
+              fontWeight: "bold",
+            }}
+          >
+            {error}
+          </div>
+        )}
 
         {processedJobs.map((job) => (
           <div key={job.id} className="job-card">
-            <div className="job-header" onClick={() => setExpandedJobId(expandedJobId === job.id ? null : job.id)}>
+            <div
+              className="job-header"
+              onClick={() =>
+                setExpandedJobId(expandedJobId === job.id ? null : job.id)
+              }
+            >
               <div className="job-info-col">
                 <h3 className="job-title">{job.headline}</h3>
                 <div className="job-meta-line">
@@ -286,26 +365,91 @@ const App = () => {
                   <span>📍 {job.workplace_address?.city || "Sverige"}</span>
                 </div>
               </div>
-              <div className="job-date-col">{formatPubDate(job.publication_date)}</div>
-              <div style={{ transform: expandedJobId === job.id ? "rotate(180deg)" : "rotate(0deg)", transition: "0.2s", marginLeft: "15px" }}>
-                <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#94a3b8" strokeWidth="2"><path d="M5 7l5 5 5-5" /></svg>
+              <div className="job-date-col">
+                {formatPubDate(job.publication_date)}
+              </div>
+              <div
+                style={{
+                  transform:
+                    expandedJobId === job.id
+                      ? "rotate(180deg)"
+                      : "rotate(0deg)",
+                  transition: "0.2s",
+                  marginLeft: "15px",
+                }}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="#94a3b8"
+                  strokeWidth="2"
+                >
+                  <path d="M5 7l5 5 5-5" />
+                </svg>
               </div>
             </div>
 
             {expandedJobId === job.id && (
               <div className="expanded-content">
                 <div className="info-grid">
-                  <div className="info-item"><span className="info-label">💰 Lön</span><span className="info-value">{job.salary_description || "Fast lön"}</span></div>
-                  <div className="info-item"><span className="info-label">📅 Sista dag</span><span className="info-value">{formatDate(job.application_deadline)}</span></div>
-                  <div className="info-item"><span className="info-label">🏢 Omfattning</span><span className="info-value">{job.employment_type?.label || "Heltid"}</span></div>
-                  <div className="info-item"><span className="info-label">🚀 Ansökan</span><span className="info-value">
-                    {job.application_details?.url ? <a href={job.application_details.url} target="_blank" rel="noreferrer" style={{color: "#10b981", fontWeight: "800"}}>Sök direkt ↗</a> : "Se nedan"}
-                  </span></div>
+                  <div className="info-item">
+                    <span className="info-label">💰 Lön</span>
+                    <span className="info-value">
+                      {job.salary_description || "Fast lön"}
+                    </span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">📅 Sista dag</span>
+                    <span className="info-value">
+                      {formatDate(job.application_deadline)}
+                    </span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">🏢 Omfattning</span>
+                    <span className="info-value">
+                      {job.employment_type?.label || "Heltid"}
+                    </span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">🚀 Ansökan</span>
+                    <span className="info-value">
+                      {job.application_details?.url ? (
+                        <a
+                          href={job.application_details.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: "#10b981", fontWeight: "800" }}
+                        >
+                          Sök direkt ↗
+                        </a>
+                      ) : (
+                        "Se nedan"
+                      )}
+                    </span>
+                  </div>
                 </div>
                 <div className="job-text">{job.description?.text}</div>
                 <div className="button-row">
-                  {job.application_details?.url && <a href={job.application_details.url} target="_blank" rel="noreferrer" className="apply-btn-primary">Sök tjänsten direkt 🚀</a>}
-                  <a href={job.webpage_url} target="_blank" rel="noreferrer" className="apply-btn-secondary">Visa på Platsbanken →</a>
+                  {job.application_details?.url && (
+                    <a
+                      href={job.application_details.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="apply-btn-primary"
+                    >
+                      Sök tjänsten direkt 🚀
+                    </a>
+                  )}
+                  <a
+                    href={job.webpage_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="apply-btn-secondary"
+                  >
+                    Visa på Platsbanken →
+                  </a>
                 </div>
               </div>
             )}
