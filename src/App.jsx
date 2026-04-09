@@ -19,7 +19,7 @@ const App = () => {
   const [error, setError] = useState(null);
   const [expandedJobId, setExpandedJobId] = useState(null);
 
-  // LIVE-FILTER & SORTERING (LOKALT)
+  // LIVE-FILTER & SORTERING
   const [textFilter, setTextFilter] = useState("");
   const [sortConfig, setSortConfig] = useState({
     key: "date",
@@ -54,7 +54,7 @@ const App = () => {
     setLoading(true);
     setError(null);
     setExpandedJobId(null);
-    setTextFilter(""); // Nollställer live-filtret vid ny sökning
+    setTextFilter("");
 
     try {
       let allHits = [];
@@ -73,12 +73,28 @@ const App = () => {
         const description = (job.description?.text || "").toLowerCase();
         const jobCity = (job.workplace_address?.city || "").toLowerCase();
         const employer = (job.employer?.name || "").toLowerCase();
-        const fullContent = `${headline} ${description} ${employer} ${jobCity}`;
 
-        const matchesLocation = !location || jobCity.includes(location.toLowerCase());
-        const matchesInclude = includeTags.length === 0 || includeTags.every((t) => fullContent.includes(t));
-        const matchesExclude = excludeTags.length === 0 || !excludeTags.some((t) => fullContent.includes(t));
-        const matchesExtent = extent === "all" || (job.employment_type?.label?.toLowerCase() || "").includes(extent);
+        // Hämta kontakter för filtrering
+        const contacts = (job.application_contacts || [])
+          .map((p) => `${p.name} ${p.description}`)
+          .join(" ")
+          .toLowerCase();
+
+        const fullContent =
+          `${headline} ${description} ${employer} ${jobCity} ${contacts}`.toLowerCase();
+
+        const matchesLocation =
+          !location || jobCity.includes(location.toLowerCase());
+        const matchesInclude =
+          includeTags.length === 0 ||
+          includeTags.every((t) => fullContent.includes(t.toLowerCase()));
+        const matchesExclude =
+          excludeTags.length === 0 ||
+          !excludeTags.some((t) => fullContent.includes(t.toLowerCase()));
+
+        const matchesExtent =
+          extent === "all" ||
+          (job.employment_type?.label?.toLowerCase() || "").includes(extent);
 
         const pubDate = new Date(job.publication_date);
         const diffInHours = (new Date() - pubDate) / (1000 * 60 * 60);
@@ -86,13 +102,20 @@ const App = () => {
         if (publishedDate === "24h") matchesDate = diffInHours <= 24;
         else if (publishedDate === "3d") matchesDate = diffInHours <= 72;
         else if (publishedDate === "7d") matchesDate = diffInHours <= 168;
-        else if (publishedDate === "14d") matchesDate = diffInHours <= 336;
         else if (publishedDate === "30d") matchesDate = diffInHours <= 720;
 
         const remoteKeywords = ["distans", "remote", "hemifrån"];
-        const matchesRemote = !remoteOnly || remoteKeywords.some((kw) => fullContent.includes(kw));
+        const matchesRemote =
+          !remoteOnly || remoteKeywords.some((kw) => fullContent.includes(kw));
 
-        return matchesLocation && matchesInclude && matchesExclude && matchesExtent && matchesDate && matchesRemote;
+        return (
+          matchesLocation &&
+          matchesInclude &&
+          matchesExclude &&
+          matchesExtent &&
+          matchesDate &&
+          matchesRemote
+        );
       });
 
       setJobs(filtered);
@@ -104,20 +127,20 @@ const App = () => {
     }
   };
 
-  // BEARBETNING: KÖR BÅDE LIVE-FILTER OCH MULTI-SORTERING SAMTIDIGT
+  // BEARBETNING: LIVE-FILTER + MULTI-SORTERING
   const processedJobs = useMemo(() => {
     let result = [...jobs];
 
-    // 1. Live-textfilter
     if (textFilter) {
       result = result.filter(
         (job) =>
-          job.description?.text?.toLowerCase().includes(textFilter.toLowerCase()) ||
-          job.headline?.toLowerCase().includes(textFilter.toLowerCase())
+          job.description?.text
+            ?.toLowerCase()
+            .includes(textFilter.toLowerCase()) ||
+          job.headline?.toLowerCase().includes(textFilter.toLowerCase()),
       );
     }
 
-    // 2. Sorteringslogik
     if (sortConfig.key) {
       result.sort((a, b) => {
         let valA, valB;
@@ -132,11 +155,10 @@ const App = () => {
           valB = new Date(b.publication_date);
         }
 
-        // Primär jämförelse
         if (valA < valB) return sortConfig.direction === "ascending" ? -1 : 1;
         if (valA > valB) return sortConfig.direction === "ascending" ? 1 : -1;
 
-        // Sekundär sortering (om värdena är lika, sortera på datum nyast först)
+        // Sekundär sortering: Nyast datum först
         if (sortConfig.key !== "date") {
           return new Date(b.publication_date) - new Date(a.publication_date);
         }
@@ -161,14 +183,19 @@ const App = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return "Ej angivet";
-    return new Date(dateString).toLocaleDateString("sv-SE", { year: "numeric", month: "long", day: "numeric" });
+    return new Date(dateString).toLocaleDateString("sv-SE", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   };
 
   const formatPubDate = (dateString) => {
     const date = new Date(dateString);
     const today = new Date();
     if (date.toDateString() === today.toDateString()) return "Idag";
-    const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
     if (date.toDateString() === yesterday.toDateString()) return "Igår";
     return date.toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
   };
@@ -259,7 +286,7 @@ const App = () => {
               ))}
               <input
                 className="ghost-input"
-                placeholder="t.ex. React, Excel... (tryck Enter eller , för att lägga till sökordet)"
+                placeholder="React, Excel..."
                 value={includeInput}
                 onChange={(e) => setIncludeInput(e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, "include")}
@@ -283,7 +310,7 @@ const App = () => {
               ))}
               <input
                 className="ghost-input"
-                placeholder="t.ex. Senior, bemanning... (tryck Enter eller , för att lägga till sökordet)"
+                placeholder="Senior, bemanning..."
                 value={excludeInput}
                 onChange={(e) => setExcludeInput(e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, "exclude")}
@@ -337,17 +364,7 @@ const App = () => {
           </>
         )}
 
-        {error && (
-          <div
-            style={{
-              textAlign: "center",
-              color: "#ef4444",
-              fontWeight: "bold",
-            }}
-          >
-            {error}
-          </div>
-        )}
+        {error && <div className="error-msg-box">{error}</div>}
 
         {processedJobs.map((job) => (
           <div key={job.id} className="job-card">
@@ -429,8 +446,79 @@ const App = () => {
                       )}
                     </span>
                   </div>
+
+                  {/* HEMSIDA */}
+                  {job.employer?.url && (
+                    <div className="info-item">
+                      <span className="info-label">🌐 Hemsida</span>
+                      <span className="info-value">
+                        <a
+                          href={job.employer.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: "#2563eb" }}
+                        >
+                          Besök sida ↗
+                        </a>
+                      </span>
+                    </div>
+                  )}
+
+                  {/* KONTAKTPERSONER */}
+                  {job.application_contacts &&
+                    job.application_contacts.length > 0 && (
+                      <div
+                        className="info-item"
+                        style={{
+                          gridColumn: "1 / -1",
+                          marginTop: "10px",
+                          borderTop: "1px solid #e2e8f0",
+                          paddingTop: "15px",
+                        }}
+                      >
+                        <span className="info-label">👤 Kontaktperson</span>
+                        {job.application_contacts.map((contact, index) => (
+                          <div key={index} style={{ marginTop: "5px" }}>
+                            <span
+                              className="info-value"
+                              style={{ display: "block", color: "#1e40af" }}
+                            >
+                              {contact.name}{" "}
+                              {contact.description &&
+                                `(${contact.description})`}
+                            </span>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: "15px",
+                                marginTop: "2px",
+                              }}
+                            >
+                              {contact.email && (
+                                <a
+                                  href={`mailto:${contact.email}`}
+                                  className="contact-link-blue"
+                                >
+                                  ✉️ {contact.email}
+                                </a>
+                              )}
+                              {contact.telephone && (
+                                <a
+                                  href={`tel:${contact.telephone}`}
+                                  className="contact-link-blue"
+                                >
+                                  📞 {contact.telephone}
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                 </div>
+
                 <div className="job-text">{job.description?.text}</div>
+
                 <div className="button-row">
                   {job.application_details?.url && (
                     <a
