@@ -192,7 +192,7 @@ const App = () => {
             </div>
             <div className="input-group flex-1">
               <label className="label">Stad</label>
-              <input className="input-field" placeholder="Göteborg..." value={location} onChange={(e) => setLocation(e.target.value)} />
+              <input className="input-field" placeholder="Stockholm..." value={location} onChange={(e) => setLocation(e.target.value)} />
             </div>
           </div>
 
