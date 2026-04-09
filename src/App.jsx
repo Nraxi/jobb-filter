@@ -8,11 +8,9 @@ const App = () => {
   const [excludeTags, setExcludeTags] = useState([]);
   const [includeInput, setIncludeInput] = useState("");
   const [excludeInput, setExcludeInput] = useState("");
-
   const [extent, setExtent] = useState("all");
   const [publishedDate, setPublishedDate] = useState("all");
   const [remoteOnly, setRemoteOnly] = useState(false);
-
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -47,16 +45,18 @@ const App = () => {
     setExpandedJobId(null);
 
     try {
-      const url = `https://jobsearch.api.jobtechdev.se/search?q=${encodeURIComponent(role)}&limit=100`;
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (!data.hits || data.hits.length === 0) {
-        setError("Inga annonser hittades.");
-        return;
+      let allHits = [];
+      for (let i = 0; i < 5; i++) {
+        const offset = i * 100;
+        const url = `https://jobsearch.api.jobtechdev.se/search?q=${encodeURIComponent(role)}&offset=${offset}&limit=100`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.hits && data.hits.length > 0)
+          allHits = [...allHits, ...data.hits];
+        else break;
       }
 
-      const filtered = data.hits.filter((job) => {
+      const filtered = allHits.filter((job) => {
         const headline = (job.headline || "").toLowerCase();
         const description = (job.description?.text || "").toLowerCase();
         const jobCity = (job.workplace_address?.city || "").toLowerCase();
@@ -71,9 +71,9 @@ const App = () => {
         const matchesExclude =
           excludeTags.length === 0 ||
           !excludeTags.some((t) => fullContent.includes(t));
-
-        const jobExtent = job.employment_type?.label?.toLowerCase() || "";
-        const matchesExtent = extent === "all" || jobExtent.includes(extent);
+        const matchesExtent =
+          extent === "all" ||
+          (job.employment_type?.label?.toLowerCase() || "").includes(extent);
 
         const pubDate = new Date(job.publication_date);
         const diffInHours = (new Date() - pubDate) / (1000 * 60 * 60);
@@ -81,12 +81,7 @@ const App = () => {
         if (publishedDate === "24h") matchesDate = diffInHours <= 24;
         else if (publishedDate === "3d") matchesDate = diffInHours <= 72;
 
-        const remoteKeywords = [
-          "distans",
-          "remote",
-          "hemifrån",
-          "valfri plats",
-        ];
+        const remoteKeywords = ["distans", "remote", "hemifrån"];
         const matchesRemote =
           !remoteOnly || remoteKeywords.some((kw) => fullContent.includes(kw));
 
@@ -103,7 +98,7 @@ const App = () => {
       setJobs(filtered);
       if (filtered.length === 0) setError("Inga träffar matchade dina filter.");
     } catch (err) {
-      setError("Nätverksfel.");
+      setError("Tekniskt fel.");
     } finally {
       setLoading(false);
     }
@@ -121,23 +116,11 @@ const App = () => {
   const formatPubDate = (dateString) => {
     const date = new Date(dateString);
     const today = new Date();
+    if (date.toDateString() === today.toDateString()) return "Idag";
     const yesterday = new Date();
     yesterday.setDate(today.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) return "Idag";
     if (date.toDateString() === yesterday.toDateString()) return "Igår";
     return date.toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
-  };
-
-  const getDaysLeft = (dateString) => {
-    if (!dateString) return null;
-    const diff = new Date(dateString) - new Date();
-    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-    return days > 0
-      ? `(om ${days} dagar)`
-      : days === 0
-        ? "(Idag!)"
-        : "(Utgått)";
   };
 
   return (
@@ -146,8 +129,7 @@ const App = () => {
         <header className="header">
           <div className="logo">
             <span style={{ color: "#2563eb" }}>Jobb</span>
-            <span style={{ color: "#eab308" }}>-filter</span>{" "}
-            <span style={{ color: "#2563eb" }}>Sverige</span>
+            <span style={{ color: "#eab308" }}>-filter</span>
           </div>
           <p className="subtitle">Filtrera bort bruset från Platsbanken</p>
         </header>
@@ -167,7 +149,7 @@ const App = () => {
               <label className="label">Stad</label>
               <input
                 className="input-field"
-                placeholder="Göteborg..."
+                placeholder="Stockholm..."
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               />
@@ -199,17 +181,14 @@ const App = () => {
                 <option value="3d">Senaste 3 dagarna</option>
               </select>
             </div>
-            <div>
-              <label className="label">Arbetsplats</label>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={remoteOnly}
-                  onChange={(e) => setRemoteOnly(e.target.checked)}
-                />
-                🏠 Endast Distans
-              </label>
-            </div>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={remoteOnly}
+                onChange={(e) => setRemoteOnly(e.target.checked)}
+              />
+              🏠 Distans
+            </label>
           </div>
 
           <div>
@@ -228,7 +207,7 @@ const App = () => {
               ))}
               <input
                 className="ghost-input"
-                placeholder="React, Excel..."
+                placeholder="Lägg till ord..."
                 value={includeInput}
                 onChange={(e) => setIncludeInput(e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, "include")}
@@ -252,7 +231,7 @@ const App = () => {
               ))}
               <input
                 className="ghost-input"
-                placeholder="Senior, bemanning..."
+                placeholder="Dölj ord..."
                 value={excludeInput}
                 onChange={(e) => setExcludeInput(e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, "exclude")}
@@ -264,216 +243,183 @@ const App = () => {
             {loading ? "Söker..." : "Hitta matchande jobb"}
           </button>
         </div>
-
-        {error && <div className="error-msg">{error}</div>}
       </div>
 
       <div className="results-wrapper">
-        <div className="results-inner">
-          {jobs.length > 0 && (
-            <>
+        {jobs.length > 0 && (
+          <div className="results-header-row">
+            <div className="col-annons">Annons / Företag</div>
+            <div className="col-publicerad">Publicerad</div>
+          </div>
+        )}
+
+        {jobs.map((job) => (
+          <div key={job.id} className="job-card">
+            <div
+              className="job-header"
+              onClick={() =>
+                setExpandedJobId(expandedJobId === job.id ? null : job.id)
+              }
+            >
+              <div className="job-info-col">
+                <h3 className="job-title">{job.headline}</h3>
+                <div className="job-meta-line">
+                  <span style={{ color: "#2563eb" }}>{job.employer?.name}</span>
+                  <span style={{ color: "#cbd5e1" }}>•</span>
+                  <span>📍 {job.workplace_address?.city || "Sverige"}</span>
+                </div>
+              </div>
+              <div className="job-date-col">
+                {formatPubDate(job.publication_date)}
+              </div>
               <div
-                className="count"
                 style={{
-                  textAlign: "right",
-                  color: "#64748b",
-                  marginBottom: "15px",
-                  fontWeight: "bold",
+                  transform:
+                    expandedJobId === job.id
+                      ? "rotate(180deg)"
+                      : "rotate(0deg)",
+                  transition: "0.2s",
+                  marginLeft: "15px",
                 }}
               >
-                Hittade {jobs.length} annonser
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="#94a3b8"
+                  strokeWidth="2"
+                >
+                  <path d="M5 7l5 5 5-5" />
+                </svg>
               </div>
+            </div>
 
-              {/* NY RUBRIKRAD */}
-              <div className="results-header-row">
-                <div className="col-main">Annons</div>
-                <div className="col-date">Publicerad</div>
-              </div>
-            </>
-          )}
-
-          {jobs.map((job) => (
-            <div key={job.id} className="job-card">
-              <div
-                className="job-header"
-                onClick={() =>
-                  setExpandedJobId(expandedJobId === job.id ? null : job.id)
-                }
-              >
-                {/* VÄNSTER KOLUMN (Annonsinfo) */}
-                <div className="job-info-col">
-                  <h3
-                    className="job-title"
-                    style={{ margin: 0, fontSize: "1.1rem" }}
-                  >
-                    {job.headline}
-                  </h3>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "8px",
-                      fontSize: "0.85rem",
-                      marginTop: "4px",
-                    }}
-                  >
-                    <span style={{ color: "#2563eb", fontWeight: "700" }}>
-                      {job.employer?.name}
-                    </span>
-                    <span style={{ color: "#cbd5e1" }}>•</span>
-                    <span style={{ color: "#64748b" }}>
-                      📍 {job.workplace_address?.city || "Sverige"}
+            {expandedJobId === job.id && (
+              <div className="expanded-content">
+                <div className="info-grid">
+                  <div className="info-item">
+                    <span className="info-label">💰 Lön</span>
+                    <span className="info-value">
+                      {job.salary_description || "Fast lön"}
                     </span>
                   </div>
-                </div>
-
-                {/* HÖGER KOLUMN (Publiceringsdatum) */}
-                <div className="job-date-col">
-                  {formatPubDate(job.publication_date)}
-                </div>
-
-                <div
-                  style={{
-                    transform:
-                      expandedJobId === job.id
-                        ? "rotate(180deg)"
-                        : "rotate(0deg)",
-                    transition: "0.2s",
-                    paddingLeft: "10px",
-                  }}
-                >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    stroke="#94a3b8"
-                    strokeWidth="2"
-                  >
-                    <path d="M5 7l5 5 5-5" />
-                  </svg>
-                </div>
-              </div>
-
-              {expandedJobId === job.id && (
-                <div
-                  style={{
-                    marginTop: "20px",
-                    paddingTop: "20px",
-                    borderTop: "2px solid #f8fafc",
-                  }}
-                >
-                  <div className="info-grid">
-                    <div className="info-item">
-                      <span className="info-label">💰 Lön</span>
-                      <span className="info-value">
-                        {job.salary_description || "Fast lön"}
-                      </span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">📅 Sista ansökan</span>
-                      <span className="info-value">
-                        {formatDate(job.application_deadline)}
-                      </span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">🏢 Omfattning</span>
-                      <span className="info-value">
-                        {job.employment_type?.label}
-                      </span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">📍 Plats</span>
-                      <span className="info-value">
-                        {job.workplace_address?.city}
-                      </span>
-                    </div>
+                  <div className="info-item">
+                    <span className="info-label">📅 Sista dag</span>
+                    <span className="info-value">
+                      {formatDate(job.application_deadline)}
+                    </span>
                   </div>
-
-                  <div className="job-text">{job.description?.text}</div>
-
-                  <div
-                    className="info-grid"
-                    style={{
-                      backgroundColor: "#eff6ff",
-                      borderColor: "#bfdbfe",
-                    }}
-                  >
-                    <div style={{ gridColumn: "1 / -1" }}>
-                      <h4
-                        className="info-label"
-                        style={{ color: "#1e40af", marginBottom: "12px" }}
-                      >
-                        Sök jobbet
-                      </h4>
-                      <div
-                        className="info-item"
-                        style={{ marginBottom: "12px" }}
-                      >
-                        <span className="info-label">Sista ansökningsdag:</span>
-                        <span className="info-value">
-                          {formatDate(job.application_deadline)}{" "}
-                          {getDaysLeft(job.application_deadline)}
-                        </span>
-                      </div>
-
+                  <div className="info-item">
+                    <span className="info-label">🏢 Omfattning</span>
+                    <span className="info-value">
+                      {job.employment_type?.label || "Heltid"}
+                    </span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">📍 Plats</span>
+                    <span className="info-value">
+                      {job.workplace_address?.city || "Göteborg"}
+                    </span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">🔗 Hemsida</span>
+                    <span className="info-value">
+                      {job.employer?.url ? (
+                        <a
+                          href={job.employer.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: "#2563eb" }}
+                        >
+                          Företag ↗
+                        </a>
+                      ) : (
+                        "Ej angiven"
+                      )}
+                    </span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">🚀 Ansökan</span>
+                    <span className="info-value">
                       {job.application_details?.url ? (
                         <a
                           href={job.application_details.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="apply-btn"
-                          style={{
-                            marginTop: "0",
-                            width: "fit-content",
-                            padding: "10px 25px",
-                          }}
+                          style={{ color: "#10b981", fontWeight: "800" }}
                         >
-                          Öppna ansökningsformulär ↗
+                          Sök direkt ↗
                         </a>
                       ) : (
-                        <>
-                          {job.application_details?.reference && (
-                            <div
-                              className="info-item"
-                              style={{ marginBottom: "10px" }}
-                            >
-                              <span className="info-label">Referens:</span>
-                              <span className="info-value">
-                                {job.application_details.reference}
-                              </span>
-                            </div>
-                          )}
-                          {job.application_details?.email && (
-                            <div className="info-item">
-                              <span className="info-label">Mail:</span>
-                              <span className="info-value">
-                                <a
-                                  href={`mailto:${job.application_details.email}`}
-                                  style={{ color: "#2563eb" }}
-                                >
-                                  {job.application_details.email}
-                                </a>
-                              </span>
-                            </div>
-                          )}
-                        </>
+                        "Se nedan"
                       )}
-                    </div>
+                    </span>
                   </div>
+                </div>
+
+                {job.application_contacts?.length > 0 && (
+                  <div className="contact-box">
+                    <span
+                      className="info-label"
+                      style={{
+                        color: "#2563eb",
+                        marginBottom: "8px",
+                        display: "block",
+                      }}
+                    >
+                      Kontaktuppgifter
+                    </span>
+                    {job.application_contacts.map((c, i) => (
+                      <div key={i} style={{ marginBottom: "10px" }}>
+                        <span className="contact-name">{c.name}</span>
+                        {c.description && (
+                          <span className="contact-desc">{c.description}</span>
+                        )}
+                        {c.email && (
+                          <a
+                            href={`mailto:${c.email}`}
+                            className="contact-link-blue"
+                          >
+                            📧 {c.email}
+                          </a>
+                        )}
+                        {c.telephone && (
+                          <span style={{ fontSize: "0.9rem" }}>
+                            📞 {c.telephone}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="job-text">{job.description?.text}</div>
+
+                <div className="button-row">
+                  {job.application_details?.url && (
+                    <a
+                      href={job.application_details.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="apply-btn-primary"
+                    >
+                      Sök tjänsten direkt 🚀
+                    </a>
+                  )}
                   <a
                     href={job.webpage_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="apply-btn"
-                    style={{ background: "#64748b", marginTop: "15px" }}
+                    className="apply-btn-secondary"
                   >
-                    Visa annons på Platsbanken →
+                    Visa på Platsbanken →
                   </a>
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
