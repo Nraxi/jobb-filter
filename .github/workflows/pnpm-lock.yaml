@@ -18,24 +18,27 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    
+
+    # Denna miljövariabel tvingar actions att köra på Node 24 enligt varningen
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       
     - name: Install pnpm
-      uses: pnpm/action-setup@v3
+      uses: pnpm/action-setup@v4 # Uppdaterat till v4 för bättre stöd
       with:
-        version: 8 # Eller den version du använder lokalt
+        version: 9 # Uppdaterat till v9 (vanligast 2026)
         
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
-        cache: 'pnpm' # Ändrat från npm till pnpm
+        node-version: '24' # Uppdaterat till Node 24
+        cache: 'pnpm'
         
     - name: Install dependencies
-      # 'pnpm install --frozen-lockfile' är pnpm-motsvarigheten till 'npm ci'
       run: pnpm install --frozen-lockfile
       
     - name: Build
@@ -45,12 +48,11 @@ jobs:
       run: pnpm run build
       
     - name: Setup Pages
-      uses: actions/configure-pages@v4
+      uses: actions/configure-pages@v5 # Uppdaterat till v5
       
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
-        # Vite bygger som standard till mappen 'dist'
         path: './dist'
         
     - name: Deploy to GitHub Pages
