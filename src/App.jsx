@@ -158,7 +158,6 @@ const App = () => {
         if (valA < valB) return sortConfig.direction === "ascending" ? -1 : 1;
         if (valA > valB) return sortConfig.direction === "ascending" ? 1 : -1;
 
-        // Sekundär sortering: Nyast datum först
         if (sortConfig.key !== "date") {
           return new Date(b.publication_date) - new Date(a.publication_date);
         }
@@ -441,11 +440,32 @@ const App = () => {
                         >
                           Sök direkt ↗
                         </a>
+                      ) : job.application_details?.email ? (
+                        <a
+                          href={`mailto:${job.application_details.email}?subject=Ansökan: ${encodeURIComponent(job.headline)}${job.application_details.reference ? ` (Ref: ${encodeURIComponent(job.application_details.reference)})` : ""}`}
+                          style={{ color: "#2563eb", fontWeight: "800" }}
+                        >
+                          Sök via mail ✉️
+                        </a>
                       ) : (
-                        "Se nedan"
+                        "Se annonstext"
                       )}
                     </span>
                   </div>
+
+                  {/* REFERENSNUMMER VID MAIL */}
+                  {!job.application_details?.url &&
+                    job.application_details?.reference && (
+                      <div className="info-item">
+                        <span className="info-label">🆔 Referens</span>
+                        <span
+                          className="info-value"
+                          style={{ fontSize: "0.8rem" }}
+                        >
+                          {job.application_details.reference}
+                        </span>
+                      </div>
+                    )}
 
                   {/* HEMSIDA */}
                   {job.employer?.url && (
@@ -520,7 +540,7 @@ const App = () => {
                 <div className="job-text">{job.description?.text}</div>
 
                 <div className="button-row">
-                  {job.application_details?.url && (
+                  {job.application_details?.url ? (
                     <a
                       href={job.application_details.url}
                       target="_blank"
@@ -529,7 +549,15 @@ const App = () => {
                     >
                       Sök tjänsten direkt 🚀
                     </a>
-                  )}
+                  ) : job.application_details?.email ? (
+                    <a
+                      href={`mailto:${job.application_details.email}?subject=Ansökan: ${encodeURIComponent(job.headline)}`}
+                      className="apply-btn-primary"
+                      style={{ backgroundColor: "#2563eb" }}
+                    >
+                      Maila ansökan ✉️
+                    </a>
+                  ) : null}
                   <a
                     href={job.webpage_url}
                     target="_blank"
