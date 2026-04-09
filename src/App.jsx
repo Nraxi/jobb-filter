@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import "./App.css";
 
 const App = () => {
   const [role, setRole] = useState("");
@@ -7,6 +8,11 @@ const App = () => {
   const [excludeTags, setExcludeTags] = useState([]);
   const [includeInput, setIncludeInput] = useState("");
   const [excludeInput, setExcludeInput] = useState("");
+
+  const [extent, setExtent] = useState("all");
+  const [publishedDate, setPublishedDate] = useState("all");
+  const [remoteOnly, setRemoteOnly] = useState(false);
+
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -17,7 +23,6 @@ const App = () => {
       e.preventDefault();
       const value = e.target.value.trim().toLowerCase();
       if (!value) return;
-
       if (type === "include" && !includeTags.includes(value)) {
         setIncludeTags([...includeTags, value]);
         setIncludeInput("");
@@ -29,11 +34,9 @@ const App = () => {
   };
 
   const removeTag = (tagToRemove, type) => {
-    if (type === "include") {
+    if (type === "include")
       setIncludeTags(includeTags.filter((tag) => tag !== tagToRemove));
-    } else {
-      setExcludeTags(excludeTags.filter((tag) => tag !== tagToRemove));
-    }
+    else setExcludeTags(excludeTags.filter((tag) => tag !== tagToRemove));
   };
 
   const searchJobs = async () => {
@@ -54,9 +57,9 @@ const App = () => {
       }
 
       const filtered = data.hits.filter((job) => {
-        const jobCity = (job.workplace_address?.city || "").toLowerCase();
         const headline = (job.headline || "").toLowerCase();
         const description = (job.description?.text || "").toLowerCase();
+        const jobCity = (job.workplace_address?.city || "").toLowerCase();
         const employer = (job.employer?.name || "").toLowerCase();
         const fullContent = `${headline} ${description} ${employer} ${jobCity}`;
 
@@ -69,7 +72,32 @@ const App = () => {
           excludeTags.length === 0 ||
           !excludeTags.some((t) => fullContent.includes(t));
 
-        return matchesLocation && matchesInclude && matchesExclude;
+        const jobExtent = job.employment_type?.label?.toLowerCase() || "";
+        const matchesExtent = extent === "all" || jobExtent.includes(extent);
+
+        const pubDate = new Date(job.publication_date);
+        const diffInHours = (new Date() - pubDate) / (1000 * 60 * 60);
+        let matchesDate = true;
+        if (publishedDate === "24h") matchesDate = diffInHours <= 24;
+        else if (publishedDate === "3d") matchesDate = diffInHours <= 72;
+
+        const remoteKeywords = [
+          "distans",
+          "remote",
+          "hemifrån",
+          "valfri plats",
+        ];
+        const matchesRemote =
+          !remoteOnly || remoteKeywords.some((kw) => fullContent.includes(kw));
+
+        return (
+          matchesLocation &&
+          matchesInclude &&
+          matchesExclude &&
+          matchesExtent &&
+          matchesDate &&
+          matchesRemote
+        );
       });
 
       setJobs(filtered);
@@ -90,34 +118,55 @@ const App = () => {
     });
   };
 
+  const formatPubDate = (dateString) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) return "Idag";
+    if (date.toDateString() === yesterday.toDateString()) return "Igår";
+    return date.toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
+  };
+
+  const getDaysLeft = (dateString) => {
+    if (!dateString) return null;
+    const diff = new Date(dateString) - new Date();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return days > 0
+      ? `(om ${days} dagar)`
+      : days === 0
+        ? "(Idag!)"
+        : "(Utgått)";
+  };
+
   return (
-    <div style={styles.pageBackground}>
-      <div style={styles.topContainer}>
-        <header style={styles.header}>
-          <div style={styles.logo}>
+    <div className="page-background">
+      <div className="top-container">
+        <header className="header">
+          <div className="logo">
             <span style={{ color: "#2563eb" }}>Jobb</span>
             <span style={{ color: "#eab308" }}>-filter</span>{" "}
             <span style={{ color: "#2563eb" }}>Sverige</span>
           </div>
-          
-<br/>
-          <p style={styles.subtitle}>Filtrera bort bruset från Platsbanken</p>
+          <p className="subtitle">Filtrera bort bruset från Platsbanken</p>
         </header>
-        <div style={styles.searchCard}>
-          <div style={styles.inputRow}>
+
+        <div className="search-card">
+          <div className="input-row">
             <div style={{ flex: 2 }}>
-              <label style={styles.label}>Yrke / Roll</label>
+              <label className="label">Yrke / Roll</label>
               <input
-                style={styles.input}
+                className="input-field"
                 placeholder="t.ex. Projektledare"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={styles.label}>Stad</label>
+              <label className="label">Stad</label>
               <input
-                style={styles.input}
+                className="input-field"
                 placeholder="Göteborg..."
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
@@ -125,25 +174,61 @@ const App = () => {
             </div>
           </div>
 
+          <div className="filter-group-wrapper">
+            <div>
+              <label className="label">Omfattning</label>
+              <select
+                className="select-input"
+                value={extent}
+                onChange={(e) => setExtent(e.target.value)}
+              >
+                <option value="all">Alla typer</option>
+                <option value="heltid">Heltid</option>
+                <option value="deltid">Deltid</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Publicerad</label>
+              <select
+                className="select-input"
+                value={publishedDate}
+                onChange={(e) => setPublishedDate(e.target.value)}
+              >
+                <option value="all">När som helst</option>
+                <option value="24h">Senaste 24h</option>
+                <option value="3d">Senaste 3 dagarna</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Arbetsplats</label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={remoteOnly}
+                  onChange={(e) => setRemoteOnly(e.target.checked)}
+                />
+                🏠 Endast Distans
+              </label>
+            </div>
+          </div>
+
           <div>
-            <label style={styles.label}>Ska innehålla (Enter)</label>
-            <div style={{ ...styles.tagBox, borderColor: "#10b981" }}>
+            <label className="label">Ska innehålla</label>
+            <div className="tag-box" style={{ borderColor: "#10b981" }}>
               {includeTags.map((tag) => (
-                <span key={tag} style={styles.tagGreen}>
+                <span key={tag} className="tag-green">
                   {tag}{" "}
                   <span
                     onClick={() => removeTag(tag, "include")}
-                    style={styles.tagX}
+                    className="tag-x"
                   >
                     ×
                   </span>
                 </span>
               ))}
               <input
-                style={styles.ghostInput}
-                placeholder={
-                  includeTags.length === 0 ? "Färdigheter, nyckelord..." : ""
-                }
+                className="ghost-input"
+                placeholder="React, Excel..."
                 value={includeInput}
                 onChange={(e) => setIncludeInput(e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, "include")}
@@ -152,24 +237,22 @@ const App = () => {
           </div>
 
           <div>
-            <label style={styles.label}>Ska INTE innehålla (Enter)</label>
-            <div style={{ ...styles.tagBox, borderColor: "#ef4444" }}>
+            <label className="label">Ska INTE innehålla</label>
+            <div className="tag-box" style={{ borderColor: "#ef4444" }}>
               {excludeTags.map((tag) => (
-                <span key={tag} style={styles.tagRed}>
+                <span key={tag} className="tag-red">
                   {tag}{" "}
                   <span
                     onClick={() => removeTag(tag, "exclude")}
-                    style={styles.tagX}
+                    className="tag-x"
                   >
                     ×
                   </span>
                 </span>
               ))}
               <input
-                style={styles.ghostInput}
-                placeholder={
-                  excludeTags.length === 0 ? "Dölj oönskade ord..." : ""
-                }
+                className="ghost-input"
+                placeholder="Senior, bemanning..."
                 value={excludeInput}
                 onChange={(e) => setExcludeInput(e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, "exclude")}
@@ -177,42 +260,77 @@ const App = () => {
             </div>
           </div>
 
-          <button
-            onClick={searchJobs}
-            disabled={loading}
-            style={styles.mainBtn}
-          >
+          <button onClick={searchJobs} disabled={loading} className="main-btn">
             {loading ? "Söker..." : "Hitta matchande jobb"}
           </button>
         </div>
 
-        {error && <div style={styles.error}>{error}</div>}
+        {error && <div className="error-msg">{error}</div>}
       </div>
 
-      <div style={styles.resultsWrapper}>
-        <div style={styles.resultsInner}>
+      <div className="results-wrapper">
+        <div className="results-inner">
           {jobs.length > 0 && (
-            <div style={styles.count}>Hittade {jobs.length} annonser</div>
+            <>
+              <div
+                className="count"
+                style={{
+                  textAlign: "right",
+                  color: "#64748b",
+                  marginBottom: "15px",
+                  fontWeight: "bold",
+                }}
+              >
+                Hittade {jobs.length} annonser
+              </div>
+
+              {/* NY RUBRIKRAD */}
+              <div className="results-header-row">
+                <div className="col-main">Annons</div>
+                <div className="col-date">Publicerad</div>
+              </div>
+            </>
           )}
 
           {jobs.map((job) => (
-            <div key={job.id} style={styles.jobCard}>
+            <div key={job.id} className="job-card">
               <div
-                style={styles.jobHeader}
+                className="job-header"
                 onClick={() =>
                   setExpandedJobId(expandedJobId === job.id ? null : job.id)
                 }
               >
-                <div style={{ flex: 1 }}>
-                  <h3 style={styles.jobTitle}>{job.headline}</h3>
-                  <div style={styles.jobMeta}>
-                    <span style={styles.company}>{job.employer?.name}</span>
-                    <span style={styles.dot}>•</span>
-                    <span style={styles.city}>
+                {/* VÄNSTER KOLUMN (Annonsinfo) */}
+                <div className="job-info-col">
+                  <h3
+                    className="job-title"
+                    style={{ margin: 0, fontSize: "1.1rem" }}
+                  >
+                    {job.headline}
+                  </h3>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "8px",
+                      fontSize: "0.85rem",
+                      marginTop: "4px",
+                    }}
+                  >
+                    <span style={{ color: "#2563eb", fontWeight: "700" }}>
+                      {job.employer?.name}
+                    </span>
+                    <span style={{ color: "#cbd5e1" }}>•</span>
+                    <span style={{ color: "#64748b" }}>
                       📍 {job.workplace_address?.city || "Sverige"}
                     </span>
                   </div>
                 </div>
+
+                {/* HÖGER KOLUMN (Publiceringsdatum) */}
+                <div className="job-date-col">
+                  {formatPubDate(job.publication_date)}
+                </div>
+
                 <div
                   style={{
                     transform:
@@ -220,11 +338,12 @@ const App = () => {
                         ? "rotate(180deg)"
                         : "rotate(0deg)",
                     transition: "0.2s",
+                    paddingLeft: "10px",
                   }}
                 >
                   <svg
-                    width="20"
-                    height="20"
+                    width="18"
+                    height="18"
                     viewBox="0 0 20 20"
                     fill="none"
                     stroke="#94a3b8"
@@ -235,117 +354,122 @@ const App = () => {
                 </div>
               </div>
 
-              {expandedJobId === job.id ? (
-                <div style={styles.jobDetail}>
-                  <div style={styles.infoGrid}>
-                    <div style={styles.infoItem}>
-                      <span style={styles.infoLabel}>💰 Lön</span>
-                      <span style={styles.infoValue}>
-                        {job.salary_description ||
-                          job.salary_type?.label ||
-                          "Fast lön"}
+              {expandedJobId === job.id && (
+                <div
+                  style={{
+                    marginTop: "20px",
+                    paddingTop: "20px",
+                    borderTop: "2px solid #f8fafc",
+                  }}
+                >
+                  <div className="info-grid">
+                    <div className="info-item">
+                      <span className="info-label">💰 Lön</span>
+                      <span className="info-value">
+                        {job.salary_description || "Fast lön"}
                       </span>
                     </div>
-                    <div style={styles.infoItem}>
-                      <span style={styles.infoLabel}>
-                        📅 Sista ansökningsdag
-                      </span>
-                      <span style={styles.infoValue}>
+                    <div className="info-item">
+                      <span className="info-label">📅 Sista ansökan</span>
+                      <span className="info-value">
                         {formatDate(job.application_deadline)}
                       </span>
                     </div>
-                    <div style={styles.infoItem}>
-                      <span style={styles.infoLabel}>🏢 Arbetsgivare</span>
-                      <span style={styles.infoValue}>
-                        {job.employer?.name}
-                        {job.employer?.url && (
-                          <a
-                            href={job.employer.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={styles.smallLink}
-                          >
-                            Besök hemsida ↗
-                          </a>
-                        )}
+                    <div className="info-item">
+                      <span className="info-label">🏢 Omfattning</span>
+                      <span className="info-value">
+                        {job.employment_type?.label}
                       </span>
                     </div>
-                    <div style={styles.infoItem}>
-                      <span style={styles.infoLabel}>📍 Arbetsplats</span>
-                      <span style={styles.infoValue}>
-                        {job.workplace_address?.municipality ||
-                          job.workplace_address?.city}
-                        , {job.workplace_address?.region}
-                      </span>
-                    </div>
-                    {/* NYTT: DIREKTLÄNK TILL ANSÖKAN */}
-                    <div style={{ ...styles.infoItem, gridColumn: "1 / -1" }}>
-                      <span style={styles.infoLabel}>🔗 Hur du ansöker</span>
-                      <span style={styles.infoValue}>
-                        {job.application_details?.url ? (
-                          <a
-                            href={job.application_details.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{
-                              color: "#2563eb",
-                              textDecoration: "underline",
-                            }}
-                          >
-                            Gå direkt till ansökningsformulär ↗
-                          </a>
-                        ) : (
-                          "Använd länken längst ner för att ansöka via Platsbanken."
-                        )}
+                    <div className="info-item">
+                      <span className="info-label">📍 Plats</span>
+                      <span className="info-value">
+                        {job.workplace_address?.city}
                       </span>
                     </div>
                   </div>
 
-                  {job.application_contacts &&
-                    job.application_contacts.length > 0 && (
-                      <div style={styles.contactSection}>
-                        <h4 style={styles.smallHeading}>Kontaktpersoner</h4>
-                        <div style={styles.contactGrid}>
-                          {job.application_contacts.map((contact, idx) => (
-                            <div key={idx} style={styles.contactCard}>
-                              <span style={styles.contactName}>
-                                {contact.name || "Namn saknas"}
-                              </span>
-                              <span style={styles.contactRole}>
-                                {contact.description || "Kontaktperson"}
-                              </span>
-                              <div style={styles.contactMethods}>
-                                {contact.email && (
-                                  <span style={styles.contactLink}>
-                                    📧 {contact.email}
-                                  </span>
-                                )}
-                                {contact.telephone && (
-                                  <span style={styles.contactLink}>
-                                    📞 {contact.telephone}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                  <div className="job-text">{job.description?.text}</div>
 
-                  <div style={styles.jobText}>{job.description?.text}</div>
+                  <div
+                    className="info-grid"
+                    style={{
+                      backgroundColor: "#eff6ff",
+                      borderColor: "#bfdbfe",
+                    }}
+                  >
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <h4
+                        className="info-label"
+                        style={{ color: "#1e40af", marginBottom: "12px" }}
+                      >
+                        Sök jobbet
+                      </h4>
+                      <div
+                        className="info-item"
+                        style={{ marginBottom: "12px" }}
+                      >
+                        <span className="info-label">Sista ansökningsdag:</span>
+                        <span className="info-value">
+                          {formatDate(job.application_deadline)}{" "}
+                          {getDaysLeft(job.application_deadline)}
+                        </span>
+                      </div>
+
+                      {job.application_details?.url ? (
+                        <a
+                          href={job.application_details.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="apply-btn"
+                          style={{
+                            marginTop: "0",
+                            width: "fit-content",
+                            padding: "10px 25px",
+                          }}
+                        >
+                          Öppna ansökningsformulär ↗
+                        </a>
+                      ) : (
+                        <>
+                          {job.application_details?.reference && (
+                            <div
+                              className="info-item"
+                              style={{ marginBottom: "10px" }}
+                            >
+                              <span className="info-label">Referens:</span>
+                              <span className="info-value">
+                                {job.application_details.reference}
+                              </span>
+                            </div>
+                          )}
+                          {job.application_details?.email && (
+                            <div className="info-item">
+                              <span className="info-label">Mail:</span>
+                              <span className="info-value">
+                                <a
+                                  href={`mailto:${job.application_details.email}`}
+                                  style={{ color: "#2563eb" }}
+                                >
+                                  {job.application_details.email}
+                                </a>
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
                   <a
                     href={job.webpage_url}
                     target="_blank"
                     rel="noreferrer"
-                    style={styles.applyBtn}
+                    className="apply-btn"
+                    style={{ background: "#64748b", marginTop: "15px" }}
                   >
-                    Visa hela annonsen på Platsbanken →
+                    Visa annons på Platsbanken →
                   </a>
                 </div>
-              ) : (
-                <p style={styles.jobExcerpt}>
-                  {job.description?.text?.slice(0, 160)}...
-                </p>
               )}
             </div>
           ))}
@@ -353,253 +477,6 @@ const App = () => {
       </div>
     </div>
   );
-};
-
-const styles = {
-  pageBackground: {
-    backgroundColor: "#f8fafc",
-    minHeight: "100vh",
-    width: "100%",
-    boxSizing: "border-box",
-  },
-  topContainer: {
-    maxWidth: "800px",
-    margin: "0 auto",
-    padding: "40px 20px 20px 20px",
-    boxSizing: "border-box",
-  },
-  header: { textAlign: "center", marginBottom: "30px" },
-  logo: { fontSize: "2.4rem", fontWeight: "900", letterSpacing: "-1.5px" },
-  subtitle: { color: "#64748b", fontSize: "1rem" },
-  searchCard: {
-    background: "#ffffff",
-    padding: "32px",
-    borderRadius: "24px",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
-    display: "flex",
-    flexDirection: "column",
-    gap: "20px",
-    border: "1px solid #e2e8f0",
-    boxSizing: "border-box",
-  },
-  inputRow: { display: "flex", gap: "16px" },
-  label: {
-    display: "block",
-    fontSize: "0.85rem",
-    fontWeight: "700",
-    marginBottom: "6px",
-    color: "#475569",
-    textTransform: "uppercase",
-  },
-  input: {
-    width: "100%",
-    padding: "14px",
-    borderRadius: "12px",
-    border: "1px solid #e2e8f0",
-    fontSize: "1rem",
-    outline: "none",
-    boxSizing: "border-box",
-  },
-  tagBox: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "8px",
-    padding: "10px",
-    border: "2px solid #f1f5f9",
-    borderRadius: "12px",
-    background: "#fcfdfe",
-    alignItems: "center",
-    boxSizing: "border-box",
-  },
-  ghostInput: {
-    border: "none",
-    outline: "none",
-    flex: 1,
-    fontSize: "0.95rem",
-    background: "transparent",
-    minWidth: "150px",
-  },
-  tagGreen: {
-    background: "#dcfce7",
-    color: "#166534",
-    padding: "6px 12px",
-    borderRadius: "8px",
-    fontSize: "0.85rem",
-    fontWeight: "700",
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-  },
-  tagRed: {
-    background: "#fee2e2",
-    color: "#991b1b",
-    padding: "6px 12px",
-    borderRadius: "8px",
-    fontSize: "0.85rem",
-    fontWeight: "700",
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-  },
-  tagX: { cursor: "pointer", fontSize: "18px" },
-  mainBtn: {
-    padding: "18px",
-    background: "#2563eb",
-    color: "#ffffff",
-    border: "none",
-    borderRadius: "14px",
-    fontWeight: "700",
-    fontSize: "1rem",
-    cursor: "pointer",
-  },
-  resultsWrapper: {
-    width: "100%",
-    display: "flex",
-    justifyContent: "center",
-    padding: "20px",
-    boxSizing: "border-box",
-  },
-  resultsInner: {
-    maxWidth: "1000px",
-    width: "100%",
-    display: "flex",
-    flexDirection: "column",
-  },
-  count: {
-    fontSize: "0.9rem",
-    color: "#64748b",
-    marginBottom: "16px",
-    fontWeight: "600",
-    textAlign: "right",
-  },
-  jobCard: {
-    background: "#ffffff",
-    padding: "24px",
-    borderRadius: "20px",
-    border: "1px solid #f1f5f9",
-    marginBottom: "16px",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
-    width: "100%",
-    boxSizing: "border-box",
-    overflowWrap: "anywhere",
-    wordBreak: "break-word",
-  },
-  jobHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    cursor: "pointer",
-  },
-  jobTitle: {
-    margin: "0 0 6px 0",
-    fontSize: "1.15rem",
-    fontWeight: "800",
-    color: "#0f172a",
-  },
-  jobMeta: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    fontSize: "0.9rem",
-  },
-  company: { color: "#2563eb", fontWeight: "700" },
-  dot: { color: "#cbd5e1" },
-  city: { color: "#64748b" },
-  jobExcerpt: {
-    color: "#475569",
-    fontSize: "0.95rem",
-    lineHeight: "1.6",
-    marginTop: "14px",
-  },
-  jobDetail: {
-    marginTop: "20px",
-    paddingTop: "20px",
-    borderTop: "2px solid #f8fafc",
-  },
-  infoGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-    gap: "20px",
-    marginBottom: "20px",
-    background: "#f8fafc",
-    padding: "20px",
-    borderRadius: "16px",
-    border: "1px solid #e2e8f0",
-  },
-  infoItem: { display: "flex", flexDirection: "column", gap: "4px" },
-  infoLabel: {
-    fontSize: "0.75rem",
-    fontWeight: "700",
-    color: "#64748b",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-  },
-  infoValue: { fontSize: "0.9rem", color: "#1e293b", fontWeight: "600" },
-  contactSection: { marginBottom: "30px", padding: "0 10px" },
-  smallHeading: {
-    fontSize: "0.9rem",
-    fontWeight: "800",
-    marginBottom: "12px",
-    color: "#1e293b",
-    textTransform: "uppercase",
-  },
-  contactGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-    gap: "12px",
-  },
-  contactCard: {
-    padding: "12px",
-    background: "#ffffff",
-    border: "1px solid #e2e8f0",
-    borderRadius: "10px",
-  },
-  contactName: {
-    display: "block",
-    fontSize: "0.95rem",
-    fontWeight: "700",
-    color: "#2563eb",
-  },
-  contactRole: {
-    display: "block",
-    fontSize: "0.8rem",
-    color: "#64748b",
-    marginBottom: "8px",
-  },
-  contactMethods: { display: "flex", flexDirection: "column", gap: "4px" },
-  contactLink: { fontSize: "0.85rem", color: "#334155" },
-  smallLink: {
-    marginLeft: "8px",
-    color: "#2563eb",
-    textDecoration: "none",
-    fontSize: "0.8rem",
-  },
-  jobText: {
-    fontSize: "0.95rem",
-    lineHeight: "1.8",
-    color: "#334155",
-    whiteSpace: "pre-wrap",
-  },
-  applyBtn: {
-    display: "block",
-    marginTop: "24px",
-    background: "#2563eb",
-    color: "#ffffff",
-    textAlign: "center",
-    padding: "14px",
-    borderRadius: "12px",
-    textDecoration: "none",
-    fontWeight: "700",
-  },
-  error: {
-    padding: "20px",
-    background: "#fef2f2",
-    color: "#991b1b",
-    borderRadius: "16px",
-    border: "1px solid #fee2e2",
-    textAlign: "center",
-    marginTop: "20px",
-  },
 };
 
 export default App;
