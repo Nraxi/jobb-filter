@@ -205,14 +205,35 @@ const App = () => {
     });
   };
 
-  const formatPubDate = (dateString) => {
+  
+  const formatPubDateTime = (dateString) => {
+    if (!dateString) return "Ej angivet";
+
     const date = new Date(dateString);
+
     const today = new Date();
-    if (date.toDateString() === today.toDateString()) return "Idag";
     const yesterday = new Date();
     yesterday.setDate(today.getDate() - 1);
-    if (date.toDateString() === yesterday.toDateString()) return "Igår";
-    return date.toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
+
+    const time = date.toLocaleTimeString("sv-SE", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    if (date.toDateString() === today.toDateString()) {
+      return `Idag ${time}`;
+    }
+
+    if (date.toDateString() === yesterday.toDateString()) {
+      return `Igår ${time}`;
+    }
+
+    return (
+      date.toLocaleDateString("sv-SE", {
+        day: "numeric",
+        month: "short",
+      }) + ` ${time}`
+    );
   };
 
   return (
@@ -419,7 +440,10 @@ const App = () => {
                 </div>
               </div>
               <div className="job-date-col">
-                {formatPubDate(job.publication_date)}
+                <div>{formatPubDateTime(job.publication_date)}</div>
+                <div style={{ fontSize: "0.7rem", opacity: 0.6 }}>
+                  publicerad
+                </div>
               </div>
               <div
                 style={{
