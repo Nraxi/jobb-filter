@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import "./App.css";
 
 const App = () => {
@@ -12,6 +12,22 @@ const App = () => {
   const [extent, setExtent] = useState("all");
   const [publishedDate, setPublishedDate] = useState("all");
   const [remoteOnly, setRemoteOnly] = useState(false);
+
+  // DARK MODE
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem("theme");
+
+    if (saved) return saved;
+
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
   // DATA-STATE
   const [jobs, setJobs] = useState([]);
@@ -202,11 +218,32 @@ const App = () => {
   return (
     <div className="page-background">
       <div className="top-container">
+        <div className="top-bar">
+          <div className="theme-toggle">
+            <span className="theme-label">
+              {theme === "dark" ? "🌙 Mörkt läge" : "☀️ Ljust läge"}
+            </span>
+
+            <input
+              type="checkbox"
+              id="theme-switch"
+              checked={theme === "dark"}
+              onChange={() =>
+                setTheme((prev) => (prev === "dark" ? "light" : "dark"))
+              }
+            />
+
+            <label htmlFor="theme-switch" className="toggle-label">
+              <span className="toggle-ball" />
+            </label>
+          </div>
+        </div>
         <header className="header">
           <div className="logo">
             <span style={{ color: "#2563eb" }}>Jobb</span>
             <span style={{ color: "#eab308" }}>-filter</span>
           </div>
+
           <p className="subtitle">Filtrera bort bruset från Platsbanken</p>
         </header>
 
@@ -285,7 +322,7 @@ const App = () => {
               ))}
               <input
                 className="ghost-input"
-                placeholder="React, Excel..."
+                placeholder="React, Excel...  (använd komma eller enter för att lägga till sökord)"
                 value={includeInput}
                 onChange={(e) => setIncludeInput(e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, "include")}
@@ -309,7 +346,7 @@ const App = () => {
               ))}
               <input
                 className="ghost-input"
-                placeholder="Senior, bemanning..."
+                placeholder="Senior, bemanning...  (använd komma eller enter för att lägga till sökord)"
                 value={excludeInput}
                 onChange={(e) => setExcludeInput(e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, "exclude")}
@@ -574,6 +611,6 @@ const App = () => {
       </div>
     </div>
   );
-};
+};;
 
 export default App;
